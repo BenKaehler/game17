@@ -5,10 +5,11 @@ Created on Tue Apr 12 10:18:04 2022
 @author: Ben Kaehler
 """
 
-__version__ = 1.1
+__version__ = 1.0
 
+import os
+import sys
 import time
-from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -198,15 +199,18 @@ def update_board(owner, moves, owners, numbers):
     for square, direction, number in moves:
         to = destination(square, direction, board_size)
         if (to >= board_size).any() or (to < 0).any():
-            print('square coordinates out of bounds\n')
+            print('player %d skipped: square coordinates out of bounds\n'
+                  % owner)
             return
         if owners[tuple(square)] != owner:
-            print('attempt to move unowned pieces\n')
+            print('player %d skipped: attempt to move unowned pieces\n'
+                  % owner)
             return
         outgoing[tuple(square)] += number
         incoming[tuple(to)] += number
     if (outgoing > numbers).any():
-        print('attempt to move more pieces than owned\n')
+        print('player %d skipped: attempt to move more pieces than owned\n'
+               % owner)
         return
     numbers -= outgoing
     ix = incoming > 0
@@ -247,7 +251,7 @@ def print_board(owners, numbers, print_numbers=False):
     None.
 
     """
-    output = []
+    grid = []
     n_max = numbers.max()
     for o_row, n_row in zip(owners, numbers):
         form = ''
@@ -255,21 +259,38 @@ def print_board(owners, numbers, print_numbers=False):
             c = min(70 + n*185//n_max, 255)
             b = min(2*c, 255)
             form += ('\x1b[48;2;%d;%d;%dm' % (c,c,b)) + '%3d\x1b[0m'
-        output.append(form % tuple(o_row))
+        grid.append(form % tuple(o_row))
         if print_numbers:
-            output.append('%3d'*len(n_row) % tuple(n_row))
-    print('\n'.join(output))
+            grid.append('%3d'*len(n_row) % tuple(n_row))
+    print('\n'.join(grid))
 
 
-def game17(players, display_board=True, display_counts=False,
-           board_size=14, num_rounds=50):
+def board_diff(before, after):
+    'JSON dumpable sparse representation of a diff between 2D arrays'
+    ix = after != before
+    board_size = before.shape[0]
+    board_range = np.arange(board_size)
+    from_i, from_j = np.meshgrid(board_range, board_range,
+                                 indexing='ij')
+    diff = np.vstack(
+        (from_i[ix], from_j[ix], after[ix])).T
+    return diff
+
+
+def apply_diff(before, diff):
+    'Apply a diff to a 2D array'
+    for i, j, after in diff:
+        before[i, j] = after
+
+
+def game17(players, board_size=14, num_rounds=50):
     """
     Play a game of Game 17.
 
     Parameters
     ----------
-    players : list of functions
-        A function for each player of the game.
+    players : dict of functions
+        A function for each player of the game. Keys are player numbers.
     display_board : bool, optional
         Whether to display the board after each turn. The default is True.
     display_counts : bool, optional
@@ -285,45 +306,61 @@ def game17(players, display_board=True, display_counts=False,
 
     """
     owners, numbers = create_board(board_size)
+    record = {'owners' : np.array(owners),
+              'numbers' : np.array(numbers),
+              'diffs' : []}
     all_owners = list(set(owners.flatten()))
     np.random.shuffle(all_owners)
-    num_players = len(players)
     times = defaultdict(list)
     for round in range(num_rounds):
         for owner in all_owners:
             if owner not in set(owners.flatten()):
                 continue
-            if owner < num_players:
+            if owner in players:
                 safe_owners = np.array(owners)
                 safe_numbers = np.array(numbers)
-                start = time.process_time()
-                moves = players[owner](owner, safe_owners, safe_numbers)
-                end = time.process_time()
+                try:
+                    start = time.process_time()
+                    moves = players[owner](owner, safe_owners, safe_numbers)
+                    end = time.process_time()
+                except KeyboardInterrupt:
+                    raise
+                except Exception:
+                    moves = []
+                    end = time.process_time()
                 times[owner].append(end - start)
             else:
                 moves = make_moves_zombie(owner, owners, numbers)
-            update_board(owner, moves, owners, numbers)
+            before_owners = np.array(owners)
+            before_numbers = np.array(numbers)
+            try:
+                safe_owners = np.array(owners)
+                safe_numbers = np.array(numbers)
+                update_board(owner, moves, owners, numbers)
+            except KeyboardInterrupt:
+                raise
+            except Exception:
+                owners = safe_owners
+                numbers = safe_numbers
+                print(f'skipping player {owner}, because they broke update_board')
+            record['diffs'].append({
+                'round' : round,
+                'owner' : owner,
+                'owners' : board_diff(before_owners, owners),
+                'numbers' : board_diff(before_numbers, numbers)})
             num_players_left = len(set(owners[numbers > 0].flatten()))
-            if display_board:
-                print('round', round, 'player', owner)
-                print_board(owners, numbers, display_counts)
-                time.sleep(1 / num_players_left)
             if num_players_left == 1:
                 break
         if num_players_left == 1:
             break
     scores = {o:(owners == o).sum() for o in np.unique(owners)}
-    for owner in times:
-        times[owner] = sum(times[owner]) / len(times[owner])
-    return scores, times
+    for owner in players:
+        if owner in times:
+            times[owner] = sum(times[owner]) / len(times[owner])
+        else:
+            times[owner] = -1
+    return scores, times, record
 
 
-if __name__ == '__main__':
-    # This code plays a round of Game 17 and displays the result.
-    scores, times = game17([make_moves], True)
-    scores = pd.DataFrame(scores, index=['score'])
-    print()
-    print(scores.transpose())
-    times = pd.DataFrame(times, index=['times'])
-    print()
-    print(times.transpose())
+    
+
