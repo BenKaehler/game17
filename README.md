@@ -2,53 +2,53 @@
 
 ## Installation
 
-'''
+```
 pip install git+https://github.com/BenKaehler/game17.git
-'''
+```
 
 ## Usage
 
 There is a demo player in the demo directory, so
 
-'''
+```
 cd demo  # make demo your working directory
-'''
+```
 
 To run a single game:
 
-'''
+```
 game17 single stub.py
-'''
+```
 
 To play players against zombies (repeatedly):
 
-'''
+```
 game17 vs-zombies stub.py vs-zombies-output-directory
-'''
+```
 
 To rank a collection of players:
 
-'''
+```
 game17 rank stub.py stub.py ranking-output-directory
-'''
+```
 
 To replay a game:
 
-'''
+```
 game17 replay ranking-output-directory/battle-royale-0.json
-'''
+```
 
 For help:
 
-'''
+```
 game17 --help
-'''
+```
 
 or, eg.,
 
-'''
+```
 game17 single --help
-'''
+```
 
 ## Rules
 
