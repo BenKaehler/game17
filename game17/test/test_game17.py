@@ -7,7 +7,7 @@ Created on Thu Apr 21 05:48:53 2022
 
 __version__ = 1.1
 
-import game17 as g17
+import game17.game17 as g17
 
 import numpy as np
 from collections import Counter
@@ -33,7 +33,7 @@ test_numbers = np.array(test_numbers)
 
 def test_find_owned_pieces():
     owned_pieces = g17.find_owned_pieces(2, test_owners, test_numbers)
-    assert test_numbers[test_owners == 2].sum() == owned_pieces[:,2].sum(), \
+    assert test_numbers[test_owners == 2].sum() == owned_pieces[:, 2].sum(),\
         "incorrect number of squares reported"
     for i, j, n in owned_pieces:
         assert test_owners[i, j] == 2, "reported square not owned by 2"
@@ -78,7 +78,7 @@ def test_create_board():
     assert numbers.shape == (7, 7), "board is the wrong shape"
     assert (np.unique(owners) == np.arange(49)).all(), "bad owners"
     assert (numbers == 4).all(), "bad number of pieces"
-    
+
 
 def test_destination():
     in_out = [((0, 0, 'n'), (1, 0)),
@@ -123,7 +123,7 @@ def test_update_board():
              (np.array([6, 4]), 's', 1)]
     g17.update_board(2, moves, owners, numbers)
     numbers_diff = numbers - test_numbers
-    assert (owners[numbers_diff == 0] == 
+    assert (owners[numbers_diff == 0] ==
             test_owners[numbers_diff == 0]).all(), \
         "owner changed where it shouldn't have"
     for coords, d, n in moves:

@@ -1,10 +1,14 @@
-
- 
 from collections import defaultdict, Counter
-from importlib import import_module, reload
+from importlib import reload
 from itertools import combinations
 from pathlib import Path
 import json
+import time
+
+import pandas as pd
+import numpy as np
+
+from game17 import print_board, game17, apply_diff
 
 
 def replay(game, display_counts):
@@ -27,7 +31,6 @@ def replay(game, display_counts):
     print_board(owners, numbers, display_counts)
     print()
     for diff in diffs:
-        owner = diff['owner']
         apply_diff(numbers, diff['numbers'])
         apply_diff(owners, diff['owners'])
         print(f"round {diff['round']}, player {diff['owner']}")
@@ -36,15 +39,15 @@ def replay(game, display_counts):
         num_players_left = len(set(owners[numbers > 0].flatten()))
         time.sleep(1 / num_players_left)
     scores = pd.DataFrame(
-            {o:(owners == o).sum() for o in np.unique(owners)},
+            {o: (owners == o).sum() for o in np.unique(owners)},
             index=['squares'])
     print(scores.transpose())
 
 
 def single(movers, player_modules, board_size, num_rounds,
-        display_counts):
-    'Run a single game of game17 and display to the terminal' 
-    for module in player_module.values():
+           display_counts):
+    'Run a single game of game17 and display to the terminal'
+    for module in player_modules.values():
         reload(module)
     scores, times, record = game17(
         movers, board_size=board_size, num_rounds=num_rounds)
@@ -83,7 +86,7 @@ def round_robin(movers, player_modules, board_size, num_rounds,
         # if either player is banned, skip it
         if player1 in banned or player2 in banned:
             continue
-        competitors = {player1 : movers[player1], player2 : movers[player2]}
+        competitors = {player1: movers[player1], player2: movers[player2]}
         # by kind and reload dodgy round counters
         for player in competitors:
             reload(player_modules[player])
@@ -109,34 +112,34 @@ def round_robin(movers, player_modules, board_size, num_rounds,
         for game in tuple(outcomes.keys()):
             if the_banned in game:
                 del outcomes[game]
-    
+
     # print game-by-game results
     with open(out_dir / f'round-robin-{group}.txt', 'w') as rr:
         pretty_outcomes = {
-            ' vs '.join(map(str, players)) : ', '.join(map(str, winners))
+            ' vs '.join(map(str, players)): ', '.join(map(str, winners))
             for players, winners in outcomes.items()}
         pretty_outcomes = pd.DataFrame(pretty_outcomes, index=['winner'])
         rr.write(pretty_outcomes.transpose().to_string() + '\n')
-        
+
     # rank the movers
     winners = Counter(w for outcome in outcomes.values() for w in outcome)
     ranks = defaultdict(set)
     for player, games in winners.items():
         ranks[games].add(player)
-    ranks = [ranks[g] for g in sorted(ranks, reverse=True)] 
+    ranks = [ranks[g] for g in sorted(ranks, reverse=True)]
     if set(movers) - set(winners) - banned:
         ranks.append(set(movers) - set(winners) - banned)
     if banned:
         ranks.append(banned)
-                
+
     # print summary
     with open(out_dir / f'round-robin-summary-{group}.txt', 'w') as summary:
         winners = pd.DataFrame(
-            {p : [str(winners.get(p, 'banned' if p in banned else 0)),
-                  max_time[p]]
+            {p: [str(winners.get(p, 'banned' if p in banned else 0)),
+                 max_time[p]]
              for p in movers}, index=['games won', 'max time'])
         summary.write(winners.transpose().to_string() + '\n')
-    
+
     return ranks
 
 
@@ -159,19 +162,19 @@ def battle_royale(num_games, movers, player_modules, board_size, num_rounds,
         with open(out_dir / f'battle-royale-{i}.json', 'w') as mf:
             json.dump(record, mf, cls=NumPyEncoder)
         if not kind_to_time_hogs:
-            for player, time in times.items():
+            for player, ptime in times.items():
                 if time > 0.01:
                     del movers[player]
                     banned.add(player)
-                max_time[player] = max(max_time[player], time)
+                max_time[player] = max(max_time[player], ptime)
         for player, score in scores.items():
             if player in movers and score == max(scores.values()):
                 victories[player] += 1
-        
+
     # expunge the banned
     for the_banned in banned:
         del victories[the_banned]
-    
+
     # rank the movers
     ranks = defaultdict(set)
     for player, games in victories.items():
@@ -181,15 +184,15 @@ def battle_royale(num_games, movers, player_modules, board_size, num_rounds,
         ranks.append(set(movers) - set(victories) - banned)
     if banned:
         ranks.append(banned)
-    
+
     # print summary
     with open(out_dir / 'battle-royale-summary.txt', 'w') as br:
         winners = pd.DataFrame(
-            {p : [str(victories.get(p, 'banned' if p in banned else 0)),
-                  max_time[p]]
+            {p: [str(victories.get(p, 'banned' if p in banned else 0)),
+                 max_time[p]]
              for p in set(movers) | banned}, index=['games won', 'max time'])
         br.write(winners.transpose().to_string() + '\n')
-        
+
     return ranks
 
 
@@ -209,5 +212,5 @@ def vs_zombies(num_games, movers, player_modules, board_size, num_rounds):
         for player, score in scores.items():
             if player in movers and score == max(scores.values()):
                 victories[player] += 1
-        
+
     return victories, max_time

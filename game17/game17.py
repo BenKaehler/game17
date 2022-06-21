@@ -7,12 +7,13 @@ Created on Tue Apr 12 10:18:04 2022
 
 __version__ = 1.0
 
-import os
-import sys
 import time
+from collections import defaultdict
 
 import numpy as np
-import pandas as pd
+
+from zombie import make_moves as make_moves_zombie
+
 
 def find_owned_pieces(owner, owners, numbers):
     """
@@ -31,7 +32,7 @@ def find_owned_pieces(owner, owners, numbers):
     -------
     owned_pieces : n x 3 array of ints
         Where n is the number of non-empty squares owned by the owner.
-        Each row contains the i-coordinate, the j-coordinate, and the number 
+        Each row contains the i-coordinate, the j-coordinate, and the number
         of pieces in that square.
 
     """
@@ -40,12 +41,12 @@ def find_owned_pieces(owner, owners, numbers):
     board_range = np.arange(board_size)
     from_i, from_j = np.meshgrid(board_range, board_range,
                                  indexing='ij')
-    owned_pieces =  np.vstack(
+    owned_pieces = np.vstack(
         (from_i[ix], from_j[ix], numbers[ix])).T
     return owned_pieces
 
 
-def create_board(board_size = 14):
+def create_board(board_size=14):
     """
     Sets up the board. Each player initially owns one random square and
     each square initially contains four pieces.
@@ -107,9 +108,9 @@ def update_board(owner, moves, owners, numbers):
     owner : int
         Player number.
     moves : list of triples
-        Each tuple contains a 2-element numpy array of ints giving the 
-        current coordinates of the pieces to be moved, a string giving the 
-        direction to move ('n', 's', 'e', or 'w'), and an int giving the 
+        Each tuple contains a 2-element numpy array of ints giving the
+        current coordinates of the pieces to be moved, a string giving the
+        direction to move ('n', 's', 'e', or 'w'), and an int giving the
         number of pieces to move..
     owners : square array of ints
         Current owner of each square.
@@ -138,7 +139,7 @@ def update_board(owner, moves, owners, numbers):
         incoming[tuple(to)] += number
     if (outgoing > numbers).any():
         print('player %d skipped: attempt to move more pieces than owned\n'
-               % owner)
+              % owner)
         return
     numbers -= outgoing
     ix = incoming > 0
@@ -159,8 +160,8 @@ def update_board(owner, moves, owners, numbers):
 
 def print_board(owners, numbers, print_numbers=False):
     """
-    Print the state of the board. Printed as a matrix. The brightness of the 
-    background of each square is proportional to the number of pieces in it. 
+    Print the state of the board. Printed as a matrix. The brightness of the
+    background of each square is proportional to the number of pieces in it.
     The number in each square is the owner of that square.
     Optionally, a count of the number of pieces in each square can be
     displayed under each square.
@@ -186,7 +187,7 @@ def print_board(owners, numbers, print_numbers=False):
         for o, n in zip(o_row, n_row):
             c = min(70 + n*185//n_max, 255)
             b = min(2*c, 255)
-            form += ('\x1b[48;2;%d;%d;%dm' % (c,c,b)) + '%3d\x1b[0m'
+            form += ('\x1b[48;2;%d;%d;%dm' % (c, c, b)) + '%3d\x1b[0m'
         grid.append(form % tuple(o_row))
         if print_numbers:
             grid.append('%3d'*len(n_row) % tuple(n_row))
@@ -234,9 +235,9 @@ def game17(players, board_size=14, num_rounds=50):
 
     """
     owners, numbers = create_board(board_size)
-    record = {'owners' : np.array(owners),
-              'numbers' : np.array(numbers),
-              'diffs' : []}
+    record = {'owners': np.array(owners),
+              'numbers': np.array(numbers),
+              'diffs': []}
     all_owners = list(set(owners.flatten()))
     np.random.shuffle(all_owners)
     times = defaultdict(list)
@@ -270,25 +271,22 @@ def game17(players, board_size=14, num_rounds=50):
             except Exception:
                 owners = safe_owners
                 numbers = safe_numbers
-                print(f'skipping player {owner}, because they broke update_board')
+                print(f'skipping player {owner}, '
+                      'because they broke update_board')
             record['diffs'].append({
-                'round' : round,
-                'owner' : owner,
-                'owners' : board_diff(before_owners, owners),
-                'numbers' : board_diff(before_numbers, numbers)})
+                'round': round,
+                'owner': owner,
+                'owners': board_diff(before_owners, owners),
+                'numbers': board_diff(before_numbers, numbers)})
             num_players_left = len(set(owners[numbers > 0].flatten()))
             if num_players_left == 1:
                 break
         if num_players_left == 1:
             break
-    scores = {o:(owners == o).sum() for o in np.unique(owners)}
+    scores = {o: (owners == o).sum() for o in np.unique(owners)}
     for owner in players:
         if owner in times:
             times[owner] = sum(times[owner]) / len(times[owner])
         else:
             times[owner] = -1
     return scores, times, record
-
-
-    
-

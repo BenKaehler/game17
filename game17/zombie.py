@@ -1,4 +1,8 @@
 
+import numpy as np
+
+from game17 import find_owned_pieces
+
 
 def make_moves(owner, owners, numbers):
     """
@@ -16,9 +20,9 @@ def make_moves(owner, owners, numbers):
     Returns
     -------
     list of triples
-        Each tuple contains a 2-element numpy array of ints giving the 
-        current coordinates of the pieces to be moved, a string giving the 
-        direction to move ('n', 's', 'e', or 'w'), and an int giving the 
+        Each tuple contains a 2-element numpy array of ints giving the
+        current coordinates of the pieces to be moved, a string giving the
+        direction to move ('n', 's', 'e', or 'w'), and an int giving the
         number of pieces to move.
 
     """
