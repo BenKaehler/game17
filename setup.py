@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     include_package_data=False,
     install_requires=[
-        'Click',
+        'Click', 'numpy', 'pandas',
     ],
     entry_points='''
         [console_scripts]

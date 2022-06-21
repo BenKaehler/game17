@@ -7,7 +7,9 @@ Created on Thu Apr 21 05:48:53 2022
 
 __version__ = 1.1
 
-import game17.game17 as g17
+from game17 import zombie
+from game17 import game_runners
+from game17 import game17 as g17
 
 import numpy as np
 from collections import Counter
@@ -41,7 +43,7 @@ def test_find_owned_pieces():
 
 
 def test_make_moves_zombie():
-    moves = g17.make_moves_zombie(2, test_owners, test_numbers)
+    moves = zombie.make_moves(2, test_owners, test_numbers)
     assert isinstance(moves, list), "moves not reported in a list"
     assert isinstance(moves[0], tuple), "first element of moves not a tuple"
     assert isinstance(moves[0][0], np.ndarray), "coordinates not an array"
@@ -52,24 +54,6 @@ def test_make_moves_zombie():
         assert direction in "nsew", "direction not one of 'n', 's', 'e', 'w'"
     for coords, n in pieces.items():
         assert test_numbers[coords] == n, "wrong number of pieces moved"
-
-
-def test_make_moves():
-    safe_owners = np.array(test_owners)
-    safe_numbers = np.array(test_numbers)
-    moves = g17.make_moves(2, safe_owners, safe_numbers)
-    assert (safe_owners == test_owners).all(), "make_moves changed owners"
-    assert (safe_numbers == test_numbers).all(), "make_moves changed numbers"
-    assert isinstance(moves, list), "moves not reported in a list"
-    assert isinstance(moves[0], tuple), "first element of moves not a tuple"
-    assert isinstance(moves[0][0], np.ndarray), "coordinates not an array"
-    pieces = Counter()
-    for (i, j), direction, n in moves:
-        pieces[(i, j)] += n
-        assert test_owners[i, j] == 2, "moved pieces not owned"
-        assert direction in "nsew", "direction not one of 'n', 's', 'e', 'w'"
-    for coords, n in pieces.items():
-        assert test_numbers[coords] >= n, "too many pieces moved"
 
 
 def test_create_board():
@@ -144,9 +128,10 @@ def test_update_board():
 
 def test_game17():
     n = 4
-    score, times = g17.game17([], False, False, n)
+    score, times, record = game_runners.game17([], board_size=n)
     assert set(score.keys()) < set(range(n**2)), "bad players"
     assert sum(score.values()) == n**2, "bad values"
-    score, times = g17.game17([g17.make_moves_zombie]*2, False, False, n)
+    two_zombies = {1: zombie.make_moves, 2: zombie.make_moves}
+    score, times, record = game_runners.game17(two_zombies, board_size=n)
     assert set(score.keys()) < set(range(n**2)), "bad players"
     assert sum(score.values()) == n**2, "bad values"

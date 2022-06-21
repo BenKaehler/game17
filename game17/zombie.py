@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from game17 import find_owned_pieces
+from .game17 import find_owned_pieces
 
 
 def make_moves(owner, owners, numbers):

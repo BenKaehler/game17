@@ -7,12 +7,8 @@ Created on Tue Apr 12 10:18:04 2022
 
 __version__ = 1.0
 
-import time
-from collections import defaultdict
 
 import numpy as np
-
-from zombie import make_moves as make_moves_zombie
 
 
 def find_owned_pieces(owner, owners, numbers):
@@ -210,83 +206,3 @@ def apply_diff(before, diff):
     'Apply a diff to a 2D array'
     for i, j, after in diff:
         before[i, j] = after
-
-
-def game17(players, board_size=14, num_rounds=50):
-    """
-    Play a game of Game 17.
-
-    Parameters
-    ----------
-    players : dict of functions
-        A function for each player of the game. Keys are player numbers.
-    display_board : bool, optional
-        Whether to display the board after each turn. The default is True.
-    display_counts : bool, optional
-        Whether to display counts if displaying the board.
-        The default is False.
-
-    Returns
-    -------
-    scores : dict of ints to ints
-        The score of each player with a non-zero score.
-    times : dict of ints to floats
-        The average time (seconds) that calls to that player's function took
-
-    """
-    owners, numbers = create_board(board_size)
-    record = {'owners': np.array(owners),
-              'numbers': np.array(numbers),
-              'diffs': []}
-    all_owners = list(set(owners.flatten()))
-    np.random.shuffle(all_owners)
-    times = defaultdict(list)
-    for round in range(num_rounds):
-        for owner in all_owners:
-            if owner not in set(owners.flatten()):
-                continue
-            if owner in players:
-                safe_owners = np.array(owners)
-                safe_numbers = np.array(numbers)
-                try:
-                    start = time.process_time()
-                    moves = players[owner](owner, safe_owners, safe_numbers)
-                    end = time.process_time()
-                except KeyboardInterrupt:
-                    raise
-                except Exception:
-                    moves = []
-                    end = time.process_time()
-                times[owner].append(end - start)
-            else:
-                moves = make_moves_zombie(owner, owners, numbers)
-            before_owners = np.array(owners)
-            before_numbers = np.array(numbers)
-            try:
-                safe_owners = np.array(owners)
-                safe_numbers = np.array(numbers)
-                update_board(owner, moves, owners, numbers)
-            except KeyboardInterrupt:
-                raise
-            except Exception:
-                owners = safe_owners
-                numbers = safe_numbers
-                print(f'skipping player {owner}, '
-                      'because they broke update_board')
-            record['diffs'].append({
-                'round': round,
-                'owner': owner,
-                'owners': board_diff(before_owners, owners),
-                'numbers': board_diff(before_numbers, numbers)})
-            num_players_left = len(set(owners[numbers > 0].flatten()))
-            if num_players_left == 1:
-                break
-        if num_players_left == 1:
-            break
-    scores = {o: (owners == o).sum() for o in np.unique(owners)}
-    for owner in players:
-        if owner in times:
-            times[owner] = sum(times[owner]) / len(times[owner])
-        else:
-            times[owner] = -1
-    return scores, times, record
