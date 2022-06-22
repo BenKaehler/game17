@@ -1,4 +1,4 @@
-from importlib import import_module
+import importlib.util
 import sys
 import json
 import os
@@ -24,6 +24,18 @@ def replay(game, display_counts):
     game_runners.replay(game, display_counts)
 
 
+def import_module(filename):
+    # thank you https://stackoverflow.com/q/67631
+    module_path = Path(filename).resolve()
+    module_name = module_path.stem
+    spec = importlib.util.spec_from_file_location(
+        module_name, str(module_path))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_modules(players, players_file):
     'load the players'
     player_modules = {}
@@ -32,11 +44,7 @@ def load_modules(players, players_file):
     for i, player in enumerate(players, 1):
         players_file.write(f'{player} is player {i}\n')
         try:
-            # start nasty hack
-            # see https://stackoverflow.com/q/67631
-            sys.path.append(str(Path(player).parent))
-            # end nasty hack
-            player_module = import_module(player[:-3])
+            player_module = import_module(player)
             movers[i] = player_module.make_moves
             player_modules[i] = player_module
         except TypeError as err:
