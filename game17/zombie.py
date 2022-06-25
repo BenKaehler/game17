@@ -4,7 +4,7 @@ import numpy as np
 from .game17 import find_owned_pieces
 
 
-def make_moves(owner, owners, numbers):
+def make_moves(owner, rounds_left, owners, numbers):
     """
     Zombie mover. Moves each owned piece in a random direction.
 
@@ -12,6 +12,8 @@ def make_moves(owner, owners, numbers):
     ----------
     owner : int
         Player number.
+    rounds_left : int
+        Maximum possible rounds left after this one.
     owners : square array of ints
         Current owner of each square.
     numbers : square array of ints
@@ -27,16 +29,13 @@ def make_moves(owner, owners, numbers):
 
     """
     owned_pieces = find_owned_pieces(owner, owners, numbers)
-    square = []
-    direction = []
-    number = []
+    moves = []
     for pieces in owned_pieces:
         coords = pieces[:2]
         count = pieces[2]
-        moves = np.random.multinomial(count, [0.25]*4)
+        to_move = np.random.multinomial(count, [0.25]*4)
         for i in range(4):
-            if moves[i] > 0:
-                square.append(coords)
-                direction.append('nsew'[i])
-                number.append(moves[i])
-    return list(zip(square, direction, number))
+            if to_move[i] > 0:
+                move = (coords, 'nsew'[i], to_move[i])
+                moves.append(move)
+    return moves

@@ -1,5 +1,4 @@
 from collections import defaultdict, Counter
-from importlib import reload
 from itertools import combinations
 from pathlib import Path
 import json
@@ -46,11 +45,9 @@ def replay(game, display_counts):
     print(scores.transpose())
 
 
-def single(movers, player_modules, board_size, num_rounds,
+def single(movers, board_size, num_rounds,
            display_counts):
     'Run a single game of game17 and display to the terminal'
-    for module in player_modules.values():
-        reload(module)
     scores, times, record = game17(
         movers, board_size=board_size, num_rounds=num_rounds)
     replay(record, display_counts)
@@ -72,7 +69,7 @@ class NumPyEncoder(json.JSONEncoder):
             return super(NumPyEncoder, self).default(obj)
 
 
-def round_robin(movers, player_modules, board_size, num_rounds,
+def round_robin(movers, board_size, num_rounds,
                 kind_to_time_hogs, output_directory, group):
     'Run a round-robin competition and dump results to files'
     # play the games
@@ -86,10 +83,6 @@ def round_robin(movers, player_modules, board_size, num_rounds,
         if player1 in banned or player2 in banned:
             continue
         competitors = {player1: movers[player1], player2: movers[player2]}
-        # by kind and reload dodgy round counters
-        for player in competitors:
-            reload(player_modules[player])
-
         scores, times, record = game17(
             competitors, board_size=board_size, num_rounds=num_rounds)
 
@@ -142,7 +135,7 @@ def round_robin(movers, player_modules, board_size, num_rounds,
     return ranks
 
 
-def battle_royale(num_games, movers, player_modules, board_size, num_rounds,
+def battle_royale(num_games, movers, board_size, num_rounds,
                   kind_to_time_hogs, output_directory):
     'Run multiple battle royale competitions and dump the results files'
     out_dir = Path(output_directory)
@@ -151,10 +144,6 @@ def battle_royale(num_games, movers, player_modules, board_size, num_rounds,
     victories = Counter()
     max_time = Counter()
     for i in range(num_games):
-        for player, module in player_modules.items():
-            if player not in banned:
-                reload(module)
-
         scores, times, record = game17(
             movers, board_size=board_size, num_rounds=num_rounds)
 
@@ -194,21 +183,20 @@ def battle_royale(num_games, movers, player_modules, board_size, num_rounds,
     return ranks
 
 
-def vs_zombies(num_games, movers, player_modules, board_size, num_rounds):
+def vs_zombies(num_games, movers, board_size, num_rounds):
     'Run multiple competitions and return number of wins'
-    movers = dict(movers)
+    if len(movers) != 1:
+        raise ValueError(
+                f'vs_zombies passed {len(movers)} players. Should only be one')
     victories = Counter()
     max_time = Counter()
     for i in range(num_games):
-        for player, module in player_modules.items():
-            reload(module)
-
         scores, times, record = game17(
             movers, board_size=board_size, num_rounds=num_rounds)
 
-        max_time[player] = max(max_time[player], times[player])
         for player, score in scores.items():
             if player in movers and score == max(scores.values()):
+                max_time[player] = max(max_time[player], times[player])
                 victories[player] += 1
 
     return victories, max_time
@@ -242,17 +230,22 @@ def game17(players, board_size=14, num_rounds=50):
               'diffs': []}
     all_owners = list(set(owners.flatten()))
     np.random.shuffle(all_owners)
+    movers = {}
+    for owner, get_mover in players.items():
+        movers[owner] = get_mover(
+                owner=owner, owners=owners, numbers=numbers,
+                turn_order=all_owners, num_rounds=num_rounds)
     times = defaultdict(list)
     for round in range(num_rounds):
         for owner in all_owners:
             if owner not in set(owners.flatten()):
                 continue
-            if owner in players:
+            if owner in movers:
                 safe_owners = np.array(owners)
                 safe_numbers = np.array(numbers)
                 try:
                     start = time.process_time()
-                    moves = players[owner](owner, safe_owners, safe_numbers)
+                    moves = movers[owner](safe_owners, safe_numbers)
                     end = time.process_time()
                 except KeyboardInterrupt:
                     raise
@@ -261,7 +254,8 @@ def game17(players, board_size=14, num_rounds=50):
                     end = time.process_time()
                 times[owner].append(end - start)
             else:
-                moves = make_moves_zombie(owner, owners, numbers)
+                rounds_left = num_rounds - round - 1
+                moves = make_moves_zombie(owner, rounds_left, owners, numbers)
             before_owners = np.array(owners)
             before_numbers = np.array(numbers)
             try:

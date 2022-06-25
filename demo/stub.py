@@ -2,7 +2,7 @@
 from game17.zombie import make_moves as make_moves_zombie
 
 
-def make_moves(owner, owners, numbers):
+def make_moves(owner, rounds_left, owners, numbers):
     """
     Takes the current state of play as input and recommends moves for the
     pieces owned by owner. The owner can move up to the number of pieces
@@ -18,6 +18,8 @@ def make_moves(owner, owners, numbers):
     ----------
     owner : int
         Your player number.
+    rounds_lift : int
+        Maximum possible number of rounds to be played after this one.
     owners : square array of ints
         Current owner of each square.
     numbers : square array of ints
@@ -33,4 +35,4 @@ def make_moves(owner, owners, numbers):
 
     """
     # replace the body of this function with your code
-    return make_moves_zombie(owner, owners, numbers)
+    return make_moves_zombie(owner, rounds_left, owners, numbers)

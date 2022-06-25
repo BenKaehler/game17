@@ -7,7 +7,7 @@ from pathlib import Path
 import click
 import pandas as pd
 
-from game17 import game_runners
+from game17 import game_runners, basic_mover
 
 
 @click.group()
@@ -38,15 +38,17 @@ def import_module(filename):
 
 def load_modules(players, players_file):
     'load the players'
-    player_modules = {}
     movers = {}
     bad_modules = set()
     for i, player in enumerate(players, 1):
         players_file.write(f'{player} is player {i}\n')
         try:
             player_module = import_module(player)
-            movers[i] = player_module.make_moves
-            player_modules[i] = player_module
+            if hasattr(player_module, 'make_moves'):
+                movers[i] = basic_mover.get_mover_factory(
+                        player_module.make_moves)
+            else:
+                movers[i] = player_module.get_mover
         except TypeError as err:
             if 'relative import' in err:
                 print(player, 'must be in the working directory',
@@ -59,7 +61,7 @@ def load_modules(players, players_file):
             bad_modules.add(i)
             print(f'Player {i} failed to load:')
             print(err)
-    return player_modules, movers, bad_modules
+    return movers, bad_modules
 
 
 @cli.command()
@@ -99,7 +101,7 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
 
     '''
     # load the players
-    player_modules, movers, bad_modules = load_modules(players, players_file)
+    movers, bad_modules = load_modules(players, players_file)
 
     # create the output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
@@ -110,7 +112,7 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
         fh.write(', '.join(map(str, bad_modules)) + '\n')
 
     ranks = game_runners.battle_royale(
-            num_games, movers, player_modules, board_size,
+            num_games, movers, board_size,
             num_rounds, kind_to_time_hogs, output_directory)
 
     fine_ranks = []
@@ -120,7 +122,7 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
             continue
         rank_movers = {p: m for p, m in movers.items() if p in rank}
         fine_rank = game_runners.round_robin(
-            rank_movers, player_modules, board_size, num_rounds,
+            rank_movers, board_size, num_rounds,
             kind_to_time_hogs, output_directory, group)
         fine_ranks.extend(fine_rank)
 
@@ -171,7 +173,7 @@ def vs_zombies(players, output_directory, display_counts,
 
     '''
     # load the players
-    player_modules, movers, bad_modules = load_modules(players, players_file)
+    movers, bad_modules = load_modules(players, players_file)
 
     # create the output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
@@ -185,9 +187,8 @@ def vs_zombies(players, output_directory, display_counts,
         fh.write('player\tnum_wins\tmax_time\n')
         for player in movers:
             one_mover = {0: movers[player]}
-            one_module = {0: player_modules[player]}
             victories, max_time = game_runners.vs_zombies(
-                    num_games, one_mover, one_module, board_size, num_rounds)
+                    num_games, one_mover, board_size, num_rounds)
             fh.write(f'{player}\t{victories[0]}\t{max_time[0]}\n')
 
     return 0
@@ -205,7 +206,7 @@ def single(players, verbose, display_counts, board_size,
            num_rounds, players_file):
     'Play a single game of game17'
     # load the players
-    player_modules, movers, bad_modules = load_modules(
+    movers, bad_modules = load_modules(
             players, players_file)
     game_runners.single(
-            movers, player_modules, board_size, num_rounds, display_counts)
+            movers, board_size, num_rounds, display_counts)

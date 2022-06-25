@@ -10,6 +10,7 @@ __version__ = 1.1
 from game17 import zombie
 from game17 import game_runners
 from game17 import game17 as g17
+from game17.basic_mover import get_mover_factory
 
 import numpy as np
 from collections import Counter
@@ -43,7 +44,7 @@ def test_find_owned_pieces():
 
 
 def test_make_moves_zombie():
-    moves = zombie.make_moves(2, test_owners, test_numbers)
+    moves = zombie.make_moves(2, None, test_owners, test_numbers)
     assert isinstance(moves, list), "moves not reported in a list"
     assert isinstance(moves[0], tuple), "first element of moves not a tuple"
     assert isinstance(moves[0][0], np.ndarray), "coordinates not an array"
@@ -128,10 +129,11 @@ def test_update_board():
 
 def test_game17():
     n = 4
-    score, times, record = game_runners.game17([], board_size=n)
+    score, times, record = game_runners.game17({}, board_size=n)
     assert set(score.keys()) < set(range(n**2)), "bad players"
     assert sum(score.values()) == n**2, "bad values"
-    two_zombies = {1: zombie.make_moves, 2: zombie.make_moves}
+    two_zombies = {1: get_mover_factory(zombie.make_moves),
+                   2: get_mover_factory(zombie.make_moves)}
     score, times, record = game_runners.game17(two_zombies, board_size=n)
     assert set(score.keys()) < set(range(n**2)), "bad players"
     assert sum(score.values()) == n**2, "bad values"
