@@ -9,6 +9,7 @@ __version__ = 1.0
 
 
 import numpy as np
+from matplotlib import colors
 
 
 def find_owned_pieces(owner, owners, numbers):
@@ -154,7 +155,17 @@ def update_board(owner, moves, owners, numbers):
     owners[ix] = new_owners
 
 
-def print_board(owners, numbers, print_numbers=False):
+def matplotlib_to_rgb(colour_name):
+    'urgh matplotlib'
+    rgb = int(colors.to_hex(colour_name)[1:], 16)
+    b = rgb % 256
+    rg = rgb // 256
+    g = rg % 256
+    r = rg // 256
+    return r, g, b
+
+
+def print_board(owners, numbers, colours=None, print_numbers=False):
     """
     Print the state of the board. Printed as a matrix. The brightness of the
     background of each square is proportional to the number of pieces in it.
@@ -168,6 +179,8 @@ def print_board(owners, numbers, print_numbers=False):
         Current owner of each square.
     numbers : square array of ints
         Current number of pieces in each square.
+    colours : dict
+        Mapping from player numbers to matplotlib colour names
     print_numbers : bool, optional
         Whether piece counts should be explicitly shown. The default is False.
 
@@ -177,16 +190,25 @@ def print_board(owners, numbers, print_numbers=False):
 
     """
     grid = []
-    n_max = numbers.max()
-    for o_row, n_row in zip(owners, numbers):
-        form = ''
-        for o, n in zip(o_row, n_row):
-            c = min(70 + n*185//n_max, 255)
-            b = min(2*c, 255)
-            form += ('\x1b[48;2;%d;%d;%dm' % (c, c, b)) + '%3d\x1b[0m'
-        grid.append(form % tuple(o_row))
-        if print_numbers:
-            grid.append('%3d'*len(n_row) % tuple(n_row))
+    if colours:
+        colour_map = {p: matplotlib_to_rgb(c) for p, c in colours.items()}
+        for o_row, n_row in zip(owners, numbers):
+            form = ''
+            for o, n in zip(o_row, n_row):
+                r, g, b = colour_map.get(o, (116, 116, 232))  # game17 purple
+                form += f'\x1b[48;2;{r};{g};{b}m{n:3d}\x1b[0m'
+            grid.append(form)
+    else:
+        n_max = numbers.max()
+        for o_row, n_row in zip(owners, numbers):
+            form = ''
+            for o, n in zip(o_row, n_row):
+                c = min(70 + n*185//n_max, 255)
+                b = min(2*c, 255)
+                form += f'\x1b[48;2;{c};{c};{b}m{o:3d}\x1b[0m'
+            grid.append(form)
+            if print_numbers:
+                grid.append('%3d'*len(n_row) % tuple(n_row))
     print('\n'.join(grid))
 
 

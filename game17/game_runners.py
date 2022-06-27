@@ -13,7 +13,7 @@ from .game17 import (
 from .zombie import make_moves as make_moves_zombie
 
 
-def replay(game, display_counts=False):
+def replay(game, display_counts=False, colours=None):
     """
     Display a single game to the screen
 
@@ -26,19 +26,22 @@ def replay(game, display_counts=False):
         The default is False.
 
     """
-    print("let's go")
     owners = np.array(game['owners'])
     numbers = np.array(game['numbers'])
     diffs = game['diffs']
 
-    print_board(owners, numbers, display_counts)
+    print("let's go")
+    print_board(owners, numbers, colours, display_counts)
     print()
+    display_size = numbers.shape[0] + 2
+    if display_counts and not colours:
+        display_size += numbers.shape[0]
     for diff in diffs:
         apply_diff(numbers, diff['numbers'])
         apply_diff(owners, diff['owners'])
-        print(f"\u001b[{numbers.shape[0] + 2}A\u001b[2K"
+        print(f"\u001b[{display_size}A\u001b[2K"
               f"round {diff['round']}, player {diff['owner']}")
-        print_board(owners, numbers, display_counts)
+        print_board(owners, numbers, colours, display_counts)
         print()
         num_players_left = len(set(owners[numbers > 0].flatten()))
         time.sleep(1 / num_players_left)
@@ -48,11 +51,12 @@ def replay(game, display_counts=False):
     print(scores.transpose())
 
 
-def single(movers, board_size=14, num_rounds=50, display_counts=False):
+def single(movers, board_size=14, num_rounds=50,
+           display_counts=False, colours=None):
     'Run a single game of game17 and display to the terminal'
     scores, times, record = game17(
         movers, board_size=board_size, num_rounds=num_rounds)
-    replay(record, display_counts)
+    replay(record, display_counts, colours)
     times = pd.DataFrame(times, index=['times'])
     print()
     print(times.transpose())

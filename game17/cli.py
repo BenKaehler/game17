@@ -18,10 +18,12 @@ def cli():
 @cli.command()
 @click.option('-c', '--display-counts', is_flag=True)
 @click.argument('game', type=click.File())
-def replay(game, display_counts):
+@click.argument('colours', nargs=-1, type=str)
+def replay(colours, game, display_counts):
     'Replay a game of Game 17 on the terminal'
     game = json.load(game)
-    game_runners.replay(game, display_counts)
+    colours = {int(i): n for i, n in (c.split(':', 1) for c in colours)}
+    game_runners.replay(game, display_counts, colours)
 
 
 def import_module(filename):
@@ -39,8 +41,13 @@ def import_module(filename):
 def load_modules(players, players_file):
     'load the players'
     movers = {}
+    colours = {}
     bad_modules = set()
     for i, player in enumerate(players, 1):
+        if ':' in player:
+            player, colour = player.split(':', 1)
+        else:
+            colour = None
         players_file.write(f'{player} is player {i}\n')
         try:
             player_module = import_module(player)
@@ -49,6 +56,8 @@ def load_modules(players, players_file):
                         player_module.make_moves)
             else:
                 movers[i] = player_module.get_mover
+            if colour:
+                colours[i] = colour
         except TypeError as err:
             if 'relative import' in err:
                 print(player, 'must be in the working directory',
@@ -61,7 +70,7 @@ def load_modules(players, players_file):
             bad_modules.add(i)
             print(f'Player {i} failed to load:')
             print(err)
-    return movers, bad_modules
+    return movers, colours, bad_modules
 
 
 @cli.command()
@@ -101,7 +110,7 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
 
     '''
     # load the players
-    movers, bad_modules = load_modules(players, players_file)
+    movers, _, bad_modules = load_modules(players, players_file)
 
     # create the output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
@@ -173,7 +182,7 @@ def vs_zombies(players, output_directory, display_counts,
 
     '''
     # load the players
-    movers, bad_modules = load_modules(players, players_file)
+    movers, _, bad_modules = load_modules(players, players_file)
 
     # create the output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
@@ -201,12 +210,12 @@ def vs_zombies(players, output_directory, display_counts,
 @click.option('-r', '--num-rounds', type=int, default=50)
 @click.option('-p', '--players-file',
               type=click.File('w'), default='players.txt')
-@click.argument('players', nargs=-1, type=click.Path(exists=True))
+@click.argument('players', nargs=-1, type=str)  # todo make custom type
 def single(players, verbose, display_counts, board_size,
            num_rounds, players_file):
     'Play a single game of game17'
     # load the players
-    movers, bad_modules = load_modules(
+    movers, colours, bad_modules = load_modules(
             players, players_file)
     game_runners.single(
-            movers, board_size, num_rounds, display_counts)
+            movers, board_size, num_rounds, display_counts, colours)

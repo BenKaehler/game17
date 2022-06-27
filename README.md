@@ -82,7 +82,46 @@ game17.replay(game)
 
 There are lots of options for these functions, so you can change the board size, the number of rounds, and other things. You can explore them in the usual way using Python help and introspection.
 
-### Command line interface
+### Now in colour!
+
+By default, `game17` displays boards with the owner displayed as a number and the number of pieces indicated by the shade of purple of each square.
+
+You can instead now choose a colour for each player, and the numbers will instead show the number of pieces in each square. All zombies will be `game17` purple.
+
+Here is an example.
+
+```python
+import game17
+import stub
+
+players = {1: game17.get_mover_factory(stub.make_moves),
+           2: game17.get_mover_factory(stub.make_moves),
+           3: game17.get_mover_factory(stub.make_moves),
+           4: game17.get_mover_factory(stub.make_moves)}
+
+colours = {1: 'orange',
+           2: 'green',
+           3: 'xkcd:baby shit green',
+           4: 'xkcd:baby shit brown'}
+
+game17.single(players, colours=colours, board_size=3, num_rounds=10)
+```
+
+The colour names must be (`matplotlib` color names)[https://matplotlib.org/stable/gallery/color/named_colors.html].
+
+You can also add colour to single games or replays on the command line (see below).
+
+```bash
+game17 single stub.py:orange stub.py:green -s 2
+```
+
+For replays, colours must be assigned by player number.
+
+```bash
+game17 replay ranking-output-directory/battle-royale-0.json 1:orange 2:green
+```
+
+### Command Line Interface
 
 The command line interface is a little more powerful (and actually easier to use) than the Python interface. It's what a marker would use to assess a collection of `game17` players.
 
@@ -154,7 +193,9 @@ Play finishes as soon as all of the pieces belong to one player or after all pla
 
 The player or zombie who owns the most squares at the end of play wins. All of the players that tie for first win.
 
-## Basic Player
+## Creating New Players
+
+### Basic Player
 
 A basic player must be saved in a Python file that contains at least a function with the following signature:
 
@@ -194,3 +235,41 @@ def make_moves(owner, rounds_left, owners, numbers):
 ```
 
 See `game17/zombie.py` for a working, if not terribly intelligent, example.
+
+### Advanced Player
+
+You can make a stateful player by creating a Python file that contains a function called `get_mover` with the signature
+
+```python
+def get_mover(owner=None, owners=None, numbers=None,
+              turn_order=None, num_rounds=None):
+    'Get a callable object with the signature [callable](owners, numbers)'
+```
+
+Your implementation of `get_mover` must return a callable object that takes just two inputs, `owners` and `numbers`.
+
+`get_mover` is called just once at the start of each game, giving the player its owner number and other details about the game. Then the callable object that it returns must respond to the state of the board in its turn.
+
+A zombie stateful player is given as an example in `demo/stub_advanced.py`.
+
+Advanced players are detected automatically on the command line. For the Python interface, the example given above is now easier.
+
+
+```python
+import game17
+import stub_advanced
+
+players = {1: stub_advanced.get_mover,
+           2: stub_advanced.get_mover,
+           3: stub_advanced.get_mover,
+           4: stub_advanced.get_mover}
+
+colours = {1: 'orange',
+           2: 'green',
+           3: 'xkcd:baby shit green',
+           4: 'xkcd:baby shit brown'}
+
+game17.single(players, colours=colours, board_size=3, num_rounds=10)
+```
+
+You can mix and match basic and advanced players.

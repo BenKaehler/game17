@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     include_package_data=False,
     install_requires=[
-        'Click', 'numpy', 'pandas',
+        'Click', 'numpy', 'pandas', 'matplotlib'
     ],
     entry_points='''
         [console_scripts]
