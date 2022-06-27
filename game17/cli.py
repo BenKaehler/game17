@@ -112,8 +112,8 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
         fh.write(', '.join(map(str, bad_modules)) + '\n')
 
     ranks = game_runners.battle_royale(
-            num_games, movers, board_size,
-            num_rounds, kind_to_time_hogs, output_directory)
+            movers, output_directory, num_games, board_size,
+            num_rounds, kind_to_time_hogs)
 
     fine_ranks = []
     for group, rank in enumerate(ranks):
@@ -122,14 +122,14 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
             continue
         rank_movers = {p: m for p, m in movers.items() if p in rank}
         fine_rank = game_runners.round_robin(
-            rank_movers, board_size, num_rounds,
-            kind_to_time_hogs, output_directory, group)
+            rank_movers, output_directory, board_size, num_rounds,
+            kind_to_time_hogs, group)
         fine_ranks.extend(fine_rank)
 
     with open(Path(output_directory) / 'ranks.txt', 'w') as rf:
         ranks = pd.DataFrame(
             {i: ', '.join(map(str, r)) for i, r in enumerate(fine_ranks)},
-            index=['rank'])
+            index=['players'])
         rf.write(ranks.transpose().to_string() + '\n')
 
     return 0
@@ -188,7 +188,7 @@ def vs_zombies(players, output_directory, display_counts,
         for player in movers:
             one_mover = {0: movers[player]}
             victories, max_time = game_runners.vs_zombies(
-                    num_games, one_mover, board_size, num_rounds)
+                    one_mover, num_games, board_size, num_rounds)
             fh.write(f'{player}\t{victories[0]}\t{max_time[0]}\n')
 
     return 0

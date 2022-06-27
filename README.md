@@ -8,45 +8,123 @@ pip install git+https://github.com/BenKaehler/game17.git
 
 ## Usage
 
+### Python interface
+
+The Python interface is useful for experimenting, and works if all you have access to is a Python console.
+
+First of all, check that you're in the demo directory.
+
+```python
+import os
+os.get_cwd()
+```
+
+The output should end in `game17/demo` (or `game17\demo`).
+
+Now, import `game17` and the working stub.
+
+```python
+import game17
+import stub
+```
+
+You have to create a dictionary of players to feed to `game17`. The keys are the player numbers. If you've got a basic player that implements `make_moves`, you do it as follows.
+
+```python
+players = {1: game17.get_mover_factory(stub.make_moves)}
+```
+
+Now you're ready to play a single game.
+
+```python
+game17.single(players)
+```
+
+You can play 100 games against zombies to get a statistical picture of how good your player is.
+
+```python
+wins, times = game17.vs_zombies(players)
+```
+
+After you've run that, `wins` will contain a dictionary counting the wins of the players and `times` will contain a dictionary of the maximum average time your player took.
+
+To compete, you can run a battle royale, where all players compete against all players multiple times, or you can run a round-robin competition. We only have one player, so let's play it against itself.
+
+```python
+players = {1: game17.get_mover_factory(stub.make_moves),
+	   2: game17.get_mover_factory(stub.make_moves)}
+```
+
+Now run the battle royale
+
+```python
+ranking = game17.battle_royale(players, 'battle-royale-output-directory')
+```
+
+`battle_royale` puts the resulting rankings in ranking, but most of the copious information that it produces will now be in a directory called "battle-royale-output-directory".
+
+The round robin works the same way.
+
+```python
+ranking = game17.round_robin(players, 'round-robin-output-directory')
+```
+
+It's less-copious output should now be in a directory called "round-robin-output-directory". Although, if you've got lots of players, the amount of output (and run time) grows like the number of pairs.
+
+Finally, you can replay any of the games from the battle royale or round robin. You have to load them first.
+
+```python
+import json
+with open('battle-royale-output-directory/battle-royale-0.json') as brf:
+    game = json.load(brf)
+game17.replay(game)
+```
+
+There are lots of options for these functions, so you can change the board size, the number of rounds, and other things. You can explore them in the usual way using Python help and introspection.
+
+### Command line interface
+
+The command line interface is a little more powerful (and actually easier to use) than the Python interface. It's what a marker would use to assess a collection of `game17` players.
+
 There is a demo player in the demo directory, so
 
-```
+```bash
 cd demo  # make demo your working directory
 ```
 
 To run a single game:
 
-```
+```bash
 game17 single stub.py
 ```
 
 To play players against zombies (repeatedly):
 
-```
+```bash
 game17 vs-zombies stub.py vs-zombies-output-directory
 ```
 
 To rank a collection of players:
 
-```
+```bash
 game17 rank stub.py stub.py ranking-output-directory
 ```
 
 To replay a game:
 
-```
+```bash
 game17 replay ranking-output-directory/battle-royale-0.json
 ```
 
 For help:
 
-```
+```bash
 game17 --help
 ```
 
 or, eg.,
 
-```
+```bash
 game17 single --help
 ```
 

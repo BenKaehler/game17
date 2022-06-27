@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict, Counter
 from itertools import combinations
 from pathlib import Path
@@ -12,7 +13,7 @@ from .game17 import (
 from .zombie import make_moves as make_moves_zombie
 
 
-def replay(game, display_counts):
+def replay(game, display_counts=False):
     """
     Display a single game to the screen
 
@@ -25,6 +26,7 @@ def replay(game, display_counts):
         The default is False.
 
     """
+    print("let's go")
     owners = np.array(game['owners'])
     numbers = np.array(game['numbers'])
     diffs = game['diffs']
@@ -34,7 +36,8 @@ def replay(game, display_counts):
     for diff in diffs:
         apply_diff(numbers, diff['numbers'])
         apply_diff(owners, diff['owners'])
-        print(f"round {diff['round']}, player {diff['owner']}")
+        print(f"\u001b[{numbers.shape[0] + 2}A\u001b[2K"
+              f"round {diff['round']}, player {diff['owner']}")
         print_board(owners, numbers, display_counts)
         print()
         num_players_left = len(set(owners[numbers > 0].flatten()))
@@ -45,8 +48,7 @@ def replay(game, display_counts):
     print(scores.transpose())
 
 
-def single(movers, board_size, num_rounds,
-           display_counts):
+def single(movers, board_size=14, num_rounds=50, display_counts=False):
     'Run a single game of game17 and display to the terminal'
     scores, times, record = game17(
         movers, board_size=board_size, num_rounds=num_rounds)
@@ -69,9 +71,11 @@ class NumPyEncoder(json.JSONEncoder):
             return super(NumPyEncoder, self).default(obj)
 
 
-def round_robin(movers, board_size, num_rounds,
-                kind_to_time_hogs, output_directory, group):
+def round_robin(movers, output_directory, board_size=14, num_rounds=50,
+                kind_to_time_hogs=False, group=None):
     'Run a round-robin competition and dump results to files'
+    # create the output directory if it doesn't exist
+    os.makedirs(output_directory, exist_ok=True)
     # play the games
     out_dir = Path(output_directory)
     outcomes = defaultdict(list)
@@ -106,7 +110,11 @@ def round_robin(movers, board_size, num_rounds,
                 del outcomes[game]
 
     # print game-by-game results
-    with open(out_dir / f'round-robin-{group}.txt', 'w') as rr:
+    if group:
+        group = f'-{group}'
+    else:
+        group = ''
+    with open(out_dir / f'round-robin{group}.txt', 'w') as rr:
         pretty_outcomes = {
             ' vs '.join(map(str, players)): ', '.join(map(str, winners))
             for players, winners in outcomes.items()}
@@ -125,7 +133,7 @@ def round_robin(movers, board_size, num_rounds,
         ranks.append(banned)
 
     # print summary
-    with open(out_dir / f'round-robin-summary-{group}.txt', 'w') as summary:
+    with open(out_dir / f'round-robin-summary{group}.txt', 'w') as summary:
         winners = pd.DataFrame(
             {p: [str(winners.get(p, 'banned' if p in banned else 0)),
                  max_time[p]]
@@ -135,9 +143,10 @@ def round_robin(movers, board_size, num_rounds,
     return ranks
 
 
-def battle_royale(num_games, movers, board_size, num_rounds,
-                  kind_to_time_hogs, output_directory):
+def battle_royale(movers, output_directory, num_games=100, board_size=14,
+                  num_rounds=50, kind_to_time_hogs=False):
     'Run multiple battle royale competitions and dump the results files'
+    os.makedirs(output_directory, exist_ok=True)
     out_dir = Path(output_directory)
     banned = set()
     movers = dict(movers)
@@ -183,7 +192,7 @@ def battle_royale(num_games, movers, board_size, num_rounds,
     return ranks
 
 
-def vs_zombies(num_games, movers, board_size, num_rounds):
+def vs_zombies(movers, num_games=100, board_size=14, num_rounds=50):
     'Run multiple competitions and return number of wins'
     if len(movers) != 1:
         raise ValueError(
