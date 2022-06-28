@@ -16,7 +16,7 @@ First of all, check that you're in the demo directory.
 
 ```python
 import os
-os.get_cwd()
+os.getcwd()
 ```
 
 The output should end in `game17/demo` (or `game17\demo`).
