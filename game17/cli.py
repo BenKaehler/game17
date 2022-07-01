@@ -7,7 +7,7 @@ from pathlib import Path
 import click
 import pandas as pd
 
-from game17 import game_runners, basic_mover
+from game17 import game_runners, basic_mover, T800
 
 
 @click.group()
@@ -38,7 +38,7 @@ def import_module(filename):
     return module
 
 
-def load_modules(players, players_file):
+def load_modules(players, players_file, num_T800s):
     'load the players'
     movers = {}
     colours = {}
@@ -70,6 +70,9 @@ def load_modules(players, players_file):
             bad_modules.add(i)
             print(f'Player {i} failed to load:')
             print(err)
+    for i in range(i + 1, i + 1 + num_T800s):
+        movers[i] = basic_mover.get_mover_factory(T800.make_moves)
+        colours[i] = 'xkcd:dark purple'
     return movers, colours, bad_modules
 
 
@@ -77,14 +80,15 @@ def load_modules(players, players_file):
 @click.option('-c', '--display-counts', is_flag=True)
 @click.option('-s', '--board-size', type=int, default=14)
 @click.option('-r', '--num-rounds', type=int, default=50)
-@click.option('-k', '--kind-to-time-hogs', is_flag=True)
-@click.option('-g', '--num-games', default=100)
+@click.option('-t', '--time-threshold', type=float, default=0.01)
+@click.option('-g', '--num-games', type=int, default=100)
+@click.option('-T', '--num-T800s', type=int, default=0)
 @click.option('-p', '--players-file',
               type=click.File('w'), default='players.txt')
 @click.argument('players', nargs=-1, type=click.Path(exists=True))
 @click.argument('output_directory', nargs=1, type=click.Path(file_okay=False))
 def rank(players, output_directory, display_counts, board_size, num_rounds,
-         kind_to_time_hogs, num_games, players_file):
+         time_threshold, num_games, num_t800s, players_file):
     '''
     Play Game 17, battle royale, followed by round-robin run-off competitions.
 
@@ -100,8 +104,8 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
         Size of the boaud [default=14].
     num_rounds : int
         Number of rounds to play [default=50].
-    kind_to_time_hogs : bool
-        Don't ban players whose code takes more than 0.01 s.
+    time_threshold : float
+        Ban players whose code takes more than time_threshold seconds (set negative to disable).
 
     Returns
     -------
@@ -110,7 +114,7 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
 
     '''
     # load the players
-    movers, _, bad_modules = load_modules(players, players_file)
+    movers, _, bad_modules = load_modules(players, players_file, num_t800s)
 
     # create the output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
@@ -122,7 +126,7 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
 
     ranks = game_runners.battle_royale(
             movers, output_directory, num_games, board_size,
-            num_rounds, kind_to_time_hogs)
+            num_rounds, time_threshold)
 
     fine_ranks = []
     for group, rank in enumerate(ranks):
@@ -132,7 +136,7 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
         rank_movers = {p: m for p, m in movers.items() if p in rank}
         fine_rank = game_runners.round_robin(
             rank_movers, output_directory, board_size, num_rounds,
-            kind_to_time_hogs, group)
+            time_threshold, group)
         fine_ranks.extend(fine_rank)
 
     with open(Path(output_directory) / 'ranks.txt', 'w') as rf:
@@ -148,14 +152,15 @@ def rank(players, output_directory, display_counts, board_size, num_rounds,
 @click.option('-c', '--display-counts', is_flag=True)
 @click.option('-s', '--board-size', type=int, default=14)
 @click.option('-r', '--num-rounds', type=int, default=50)
-@click.option('-k', '--kind-to-time-hogs', is_flag=True)
-@click.option('-g', '--num-games', default=100)
+@click.option('-t', '--time_threshold', type=float, default=0.01)
+@click.option('-g', '--num-games', type=int, default=100)
+@click.option('-T', '--num-T800s', type=int, default=0)
 @click.option('-p', '--players-file',
               type=click.File('w'), default='players.txt')
 @click.argument('players', nargs=-1, type=click.Path(exists=True))
 @click.argument('output_directory', nargs=1, type=click.Path(file_okay=False))
 def vs_zombies(players, output_directory, display_counts,
-               board_size, num_rounds, kind_to_time_hogs, num_games,
+               board_size, num_rounds, time_threshold, num_games, num_t800s,
                players_file):
     '''
     Play Game 17, battle royale, followed by round-robin run-off competitions.
@@ -172,8 +177,8 @@ def vs_zombies(players, output_directory, display_counts,
         Size of the boaud [default=14].
     num_rounds : int
         Number of rounds to play [default=50].
-    kind_to_time_hogs : bool
-        Don't ban players whose code takes more than 0.01 s.
+    time_threshold : float
+        Ban players whose code takes more than time_threshold seconds. (Negative to disable.)
 
     Returns
     -------
@@ -182,7 +187,7 @@ def vs_zombies(players, output_directory, display_counts,
 
     '''
     # load the players
-    movers, _, bad_modules = load_modules(players, players_file)
+    movers, _, bad_modules = load_modules(players, players_file, num_t800s)
 
     # create the output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
@@ -208,14 +213,15 @@ def vs_zombies(players, output_directory, display_counts,
 @click.option('-c', '--display-counts', is_flag=True)
 @click.option('-s', '--board-size', type=int, default=14)
 @click.option('-r', '--num-rounds', type=int, default=50)
+@click.option('-T', '--num-T800s', type=int, default=0)
 @click.option('-p', '--players-file',
               type=click.File('w'), default='players.txt')
 @click.argument('players', nargs=-1, type=str)  # todo make custom type
 def single(players, verbose, display_counts, board_size,
-           num_rounds, players_file):
+           num_rounds, num_t800s, players_file):
     'Play a single game of game17'
     # load the players
     movers, colours, bad_modules = load_modules(
-            players, players_file)
+            players, players_file, num_t800s)
     game_runners.single(
             movers, board_size, num_rounds, display_counts, colours)

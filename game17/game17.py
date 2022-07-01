@@ -33,13 +33,8 @@ def find_owned_pieces(owner, owners, numbers):
         of pieces in that square.
 
     """
-    ix = (owner == owners) & (numbers > 0)
-    board_size = owners.shape[0]
-    board_range = np.arange(board_size)
-    from_i, from_j = np.meshgrid(board_range, board_range,
-                                 indexing='ij')
-    owned_pieces = np.vstack(
-        (from_i[ix], from_j[ix], numbers[ix])).T
+    from_i, from_j = np.asarray((owner == owners) & (numbers > 0)).nonzero()
+    owned_pieces = np.vstack((from_i, from_j, numbers[from_i, from_j])).T
     return owned_pieces
 
 

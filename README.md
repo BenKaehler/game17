@@ -107,7 +107,7 @@ colours = {1: 'orange',
 game17.single(players, colours=colours, board_size=3, num_rounds=10)
 ```
 
-The colour names must be (`matplotlib` color names)[https://matplotlib.org/stable/gallery/color/named_colors.html].
+The colour names must be [`matplotlib` color names](https://matplotlib.org/stable/gallery/color/named_colors.html).
 
 You can also add colour to single games or replays on the command line (see below).
 
@@ -120,6 +120,25 @@ For replays, colours must be assigned by player number.
 ```bash
 game17 replay ranking-output-directory/battle-royale-0.json 1:orange 2:green
 ```
+
+### Smarter Zombies
+
+You can add as many T800s as you have room for in your game by adding them like ordinary players.
+
+```python
+import game17
+from game17 import T800
+import stub
+
+players = {1: game17.get_mover_factory(stub.make_moves),
+           2: game17.get_mover_factory(T800.make_moves)}
+
+colours = {1: 'orange', 2: 'xkcd:deep purple'}
+
+game17.single(players, colours=colours)
+```
+
+You can add T800s to your command line games with the `-T` or `--num-T800s` option.
 
 ### Command Line Interface
 

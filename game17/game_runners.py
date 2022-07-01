@@ -76,7 +76,7 @@ class NumPyEncoder(json.JSONEncoder):
 
 
 def round_robin(movers, output_directory, board_size=14, num_rounds=50,
-                kind_to_time_hogs=False, group=None):
+                time_threshold=0.01, group=None):
     'Run a round-robin competition and dump results to files'
     # create the output directory if it doesn't exist
     os.makedirs(output_directory, exist_ok=True)
@@ -99,7 +99,7 @@ def round_robin(movers, output_directory, board_size=14, num_rounds=50,
             json.dump(record, mf, cls=NumPyEncoder)
         # if player takes more than 0.01 seconds, ban them
         for player in player1, player2:
-            if not kind_to_time_hogs and times[player] > 0.01:
+            if time_threshold > 0 and times[player] > time_threshold:
                 banned.add(player)
             max_time[player] = max(max_time[player], times[player])
         # save the outcomes
@@ -148,7 +148,7 @@ def round_robin(movers, output_directory, board_size=14, num_rounds=50,
 
 
 def battle_royale(movers, output_directory, num_games=100, board_size=14,
-                  num_rounds=50, kind_to_time_hogs=False):
+                  num_rounds=50, time_threshold=0.01):
     'Run multiple battle royale competitions and dump the results files'
     os.makedirs(output_directory, exist_ok=True)
     out_dir = Path(output_directory)
@@ -163,7 +163,7 @@ def battle_royale(movers, output_directory, num_games=100, board_size=14,
         with open(out_dir / f'battle-royale-{i}.json', 'w') as mf:
             json.dump(record, mf, cls=NumPyEncoder)
         for player, ptime in times.items():
-            if not kind_to_time_hogs and ptime > 0.01:
+            if time_threshold > 0 and ptime > time_threshold:
                 del movers[player]
                 banned.add(player)
             max_time[player] = max(max_time[player], ptime)
